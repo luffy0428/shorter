@@ -14,6 +14,18 @@ const state = {
   canUndo: false,
   isScanning: false,
   isOrganizing: false,
+  isDemoMode: false,
+};
+
+// Default category mappings (for client-side fallback/demo mode)
+const DEFAULT_CATEGORIES = {
+  "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".ico", ".tiff", ".raw"],
+  "Documents": [".pdf", ".docx", ".doc", ".txt", ".rtf", ".odt", ".xlsx", ".xls", ".csv", ".pptx", ".ppt", ".md", ".epub"],
+  "Audio": [".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a", ".wma", ".opus"],
+  "Video": [".mp4", ".mkv", ".flv", ".avi", ".mov", ".wmv", ".webm", ".m4v"],
+  "Archives": [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso"],
+  "Code & Data": [".py", ".js", ".ts", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".c", ".cpp", ".h", ".java", ".rs"],
+  "Executables": [".exe", ".msi", ".apk", ".bat", ".cmd", ".bin"],
 };
 
 // Category UI mappings
@@ -218,15 +230,110 @@ function updateStepGuide(step) {
 }
 
 // ---------------------------------------------------------------------------
+// Client-Side Demo Mode (for GitHub Pages & offline previews)
+// ---------------------------------------------------------------------------
+let demoFiles = [
+  { name: "report_financial_2026.pdf", extension: ".pdf", category: "Documents", size_bytes: 425984, size_formatted: "416.0 KB", modified: "Today, 10:30 AM", destination_folder: "Documents" },
+  { name: "meeting_notes.docx", extension: ".docx", category: "Documents", size_bytes: 35840, size_formatted: "35.0 KB", modified: "Today, 09:15 AM", destination_folder: "Documents" },
+  { name: "sales_data.xlsx", extension: ".xlsx", category: "Documents", size_bytes: 184320, size_formatted: "180.0 KB", modified: "Yesterday", destination_folder: "Documents" },
+  { name: "project_tasks.txt", extension: ".txt", category: "Documents", size_bytes: 4096, size_formatted: "4.0 KB", modified: "2 days ago", destination_folder: "Documents" },
+  { name: "readme_instructions.md", extension: ".md", category: "Documents", size_bytes: 8192, size_formatted: "8.0 KB", modified: "3 days ago", destination_folder: "Documents" },
+  { name: "vacation_photo.jpg", extension: ".jpg", category: "Images", size_bytes: 2457600, size_formatted: "2.3 MB", modified: "Oct 24, 2026", destination_folder: "Images" },
+  { name: "company_logo.png", extension: ".png", category: "Images", size_bytes: 524288, size_formatted: "512.0 KB", modified: "Oct 22, 2026", destination_folder: "Images" },
+  { name: "app_banner.webp", extension: ".webp", category: "Images", size_bytes: 153600, size_formatted: "150.0 KB", modified: "Oct 21, 2026", destination_folder: "Images" },
+  { name: "vector_icon.svg", extension: ".svg", category: "Images", size_bytes: 12288, size_formatted: "12.0 KB", modified: "Oct 19, 2026", destination_folder: "Images" },
+  { name: "data_pipeline.py", extension: ".py", category: "Code & Data", size_bytes: 18432, size_formatted: "18.0 KB", modified: "Today, 02:40 PM", destination_folder: "Code & Data" },
+  { name: "frontend_script.js", extension: ".js", category: "Code & Data", size_bytes: 28672, size_formatted: "28.0 KB", modified: "Today, 03:10 PM", destination_folder: "Code & Data" },
+  { name: "configuration.json", extension: ".json", category: "Code & Data", size_bytes: 6144, size_formatted: "6.0 KB", modified: "Yesterday", destination_folder: "Code & Data" },
+  { name: "podcast_episode_1.mp3", extension: ".mp3", category: "Audio", size_bytes: 15728640, size_formatted: "15.0 MB", modified: "Oct 20, 2026", destination_folder: "Audio" },
+  { name: "soundtrack_theme.wav", extension: ".wav", category: "Audio", size_bytes: 31457280, size_formatted: "30.0 MB", modified: "Oct 18, 2026", destination_folder: "Audio" },
+  { name: "demo_tutorial.mp4", extension: ".mp4", category: "Video", size_bytes: 52428800, size_formatted: "50.0 MB", modified: "Oct 15, 2026", destination_folder: "Video" },
+  { name: "screen_recording.mkv", extension: ".mkv", category: "Video", size_bytes: 78643200, size_formatted: "75.0 MB", modified: "Oct 14, 2026", destination_folder: "Video" },
+  { name: "dataset_backup.zip", extension: ".zip", category: "Archives", size_bytes: 10485760, size_formatted: "10.0 MB", modified: "Oct 12, 2026", destination_folder: "Archives" },
+  { name: "source_archive.tar.gz", extension: ".gz", category: "Archives", size_bytes: 5242880, size_formatted: "5.0 MB", modified: "Oct 10, 2026", destination_folder: "Archives" },
+  { name: "installer_setup.exe", extension: ".exe", category: "Executables", size_bytes: 2097152, size_formatted: "2.0 MB", modified: "Oct 08, 2026", destination_folder: "Executables" }
+];
+let demoSortedState = false;
+let demoPreviousFiles = null;
+
+function computeCategoriesSummary(files) {
+  const categories = {};
+  Object.keys(DEFAULT_CATEGORIES).forEach(cat => {
+    categories[cat] = { count: 0, total_size_bytes: 0, size_formatted: "0 B" };
+  });
+  categories["Others"] = { count: 0, total_size_bytes: 0, size_formatted: "0 B" };
+
+  files.forEach(f => {
+    const cat = f.category || "Others";
+    if (!categories[cat]) {
+      categories[cat] = { count: 0, total_size_bytes: 0, size_formatted: "0 B" };
+    }
+    categories[cat].count += 1;
+    categories[cat].total_size_bytes += (f.size_bytes || 0);
+  });
+
+  Object.keys(categories).forEach(cat => {
+    categories[cat].size_formatted = formatBytes(categories[cat].total_size_bytes);
+  });
+
+  return categories;
+}
+
+function loadInitialDemoData() {
+  state.files = JSON.parse(JSON.stringify(demoFiles));
+  state.categories = computeCategoriesSummary(state.files);
+  state.canUndo = demoSortedState;
+  if (btnUndo) btnUndo.disabled = !state.canUndo;
+  updateUI();
+  updateStepGuide(demoSortedState ? 3 : 2);
+}
+
+function enableDemoMode() {
+  state.isDemoMode = true;
+  state.systemInfo = {
+    demo_dir: "sample_test_folder",
+    base_dir: "sample_test_folder",
+    desktop_dir: "Desktop",
+    downloads_dir: "Downloads",
+    default_categories: DEFAULT_CATEGORIES
+  };
+
+  renderCategoryRules(DEFAULT_CATEGORIES);
+  setServerStatus("✨ Live Web Demo", "ready");
+
+  const banner = document.getElementById("server-offline-banner");
+  if (banner) {
+    banner.style.display = "block";
+    banner.className = "offline-banner demo-banner";
+    banner.innerHTML = `
+      <div class="offline-banner-content">
+        <span class="offline-icon">✨</span>
+        <div style="flex:1;">
+          <strong>Interactive Web Demo Mode (GitHub Pages)</strong>
+          <p>
+            You are exploring the live web preview of <strong>FileSorter</strong>! You can test scanning, filtering, dry-run, organizing, and undo right in your browser.
+            To organize real files on your computer:
+            <code>git clone https://github.com/luffy0428/shorter.git</code> and run <code>python app.py</code>
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  dirInput.value = "sample_test_folder";
+  state.currentDirectory = "sample_test_folder";
+
+  loadInitialDemoData();
+  addLog("[Demo Engine] Preloaded 19 sample files. Interactive demo ready to explore!", "system");
+  updateStepGuide(2);
+}
+
+// ---------------------------------------------------------------------------
 // Backend API Interactions
 // ---------------------------------------------------------------------------
 async function fetchSystemInfo() {
-  if (window.location.protocol === "file:") {
-    setServerStatus("Server Offline", "offline");
-    showToast("Server not running. Run 'python app.py' and visit http://localhost:8000", "warning");
-    addLog("Notice: You opened index.html directly as a file. Please start the Python server with 'python app.py' to enable sorting.", "warning");
-    const banner = document.getElementById("server-offline-banner");
-    if (banner) banner.style.display = "block";
+  if (window.location.protocol === "file:" || window.location.hostname.endsWith("github.io")) {
+    enableDemoMode();
     return;
   }
 
@@ -246,11 +353,8 @@ async function fetchSystemInfo() {
     addLog(`Connected to Python engine. Demo directory preset: ${data.demo_dir}`, "system");
     updateStepGuide(1);
   } catch (err) {
-    setServerStatus("Offline", "offline");
-    addLog(`Backend connection error: ${err.message}`, "error");
-    showToast("Could not communicate with Python backend server.", "error");
-    const banner = document.getElementById("server-offline-banner");
-    if (banner) banner.style.display = "block";
+    console.warn("Backend API unavailable, enabling Demo Mode:", err);
+    enableDemoMode();
   }
 }
 
@@ -264,6 +368,19 @@ async function scanDirectory() {
 
   showSkeletonTable();
   setProgress(true, "Scanning directory metadata...", 75);
+
+  if (state.isDemoMode) {
+    addLog(`[Demo Engine] Scanning directory: "${dir}"...`, "system");
+    setTimeout(() => {
+      loadInitialDemoData();
+      setProgress(false);
+      updateStepGuide(2);
+      showToast(`Scan complete: ${state.files.length} file(s) categorized.`, "success");
+      addLog(`Scan finished. ${state.files.length} file(s) found (${formatBytes(state.files.reduce((a, b) => a + (b.size_bytes || 0), 0))}).`, "success");
+    }, 350);
+    return;
+  }
+
   addLog(`[Python API] Scanning directory: "${dir}"...`, "system");
 
   try {
@@ -311,6 +428,31 @@ async function organizeFiles(dryRun = false) {
 
   const modeText = dryRun ? "Dry Run Preview" : "Sorting Files";
   setProgress(true, `${modeText}...`, 90);
+
+  if (state.isDemoMode) {
+    addLog(`[Demo Engine] Starting ${modeText} in "${dir}"...`, dryRun ? "warning" : "system");
+    setTimeout(() => {
+      setProgress(false);
+      if (dryRun) {
+        showToast(`Dry run complete: ${state.files.length} file(s) previewed safely.`, "info");
+        addLog(`[Dry Run] Simulated moving ${state.files.length} file(s). No files were modified.`, "warning");
+      } else {
+        demoPreviousFiles = JSON.parse(JSON.stringify(state.files));
+        state.files.forEach(f => {
+          f.destination_folder = `${f.category}/`;
+        });
+        demoSortedState = true;
+        state.canUndo = true;
+        if (btnUndo) btnUndo.disabled = false;
+        updateUI();
+        updateStepGuide(3);
+        showToast(`Success! Organized ${state.files.length} file(s) into category folders.`, "success");
+        addLog(`Success! ${state.files.length} file(s) sorted cleanly into categorized subfolders.`, "success");
+      }
+    }, 450);
+    return;
+  }
+
   addLog(`[Python API] Starting ${modeText} in "${dir}"...`, dryRun ? "warning" : "system");
 
   try {
@@ -352,6 +494,29 @@ async function undoOrganization() {
   if (!dir) return;
 
   setProgress(true, "Restoring files...", 80);
+
+  if (state.isDemoMode) {
+    addLog(`[Demo Engine] Restoring files back to root directory...`, "warning");
+    setTimeout(() => {
+      setProgress(false);
+      if (demoPreviousFiles) {
+        state.files = JSON.parse(JSON.stringify(demoPreviousFiles));
+      } else {
+        state.files.forEach(f => {
+          f.destination_folder = f.category;
+        });
+      }
+      demoSortedState = false;
+      state.canUndo = false;
+      if (btnUndo) btnUndo.disabled = true;
+      updateUI();
+      updateStepGuide(2);
+      showToast("Rollback completed. Restored files to original state.", "success");
+      addLog(`Undo successful: Restored ${state.files.length} file(s).`, "success");
+    }, 400);
+    return;
+  }
+
   addLog(`[Python API] Requesting rollback/undo in "${dir}"...`, "warning");
 
   try {
@@ -385,6 +550,28 @@ async function undoOrganization() {
 async function generateSampleFiles() {
   const dir = dirInput.value.trim() || state.systemInfo?.demo_dir;
   setProgress(true, "Generating sample test files...", 60);
+
+  if (state.isDemoMode) {
+    addLog(`[Demo Engine] Creating dummy mock files in "${dir}"...`, "system");
+    setTimeout(() => {
+      setProgress(false);
+      const extraSamples = [
+        { name: `quarterly_report_${Date.now() % 1000}.pdf`, extension: ".pdf", category: "Documents", size_bytes: 312000, size_formatted: "304.7 KB", modified: "Just now", destination_folder: "Documents" },
+        { name: `snapshot_${Date.now() % 1000}.png`, extension: ".png", category: "Images", size_bytes: 840000, size_formatted: "820.3 KB", modified: "Just now", destination_folder: "Images" },
+        { name: `script_test_${Date.now() % 1000}.py`, extension: ".py", category: "Code & Data", size_bytes: 14200, size_formatted: "13.9 KB", modified: "Just now", destination_folder: "Code & Data" },
+        { name: `audio_clip_${Date.now() % 1000}.mp3`, extension: ".mp3", category: "Audio", size_bytes: 4200000, size_formatted: "4.0 MB", modified: "Just now", destination_folder: "Audio" },
+        { name: `archive_${Date.now() % 1000}.zip`, extension: ".zip", category: "Archives", size_bytes: 2500000, size_formatted: "2.4 MB", modified: "Just now", destination_folder: "Archives" }
+      ];
+      demoFiles.push(...extraSamples);
+      state.files.push(...extraSamples);
+      state.categories = computeCategoriesSummary(state.files);
+      updateUI();
+      showToast(`Created ${extraSamples.length} new sample test files!`, "success");
+      addLog(`Generated ${extraSamples.length} diverse test files. Total files now: ${state.files.length}.`, "success");
+    }, 400);
+    return;
+  }
+
   addLog(`[Python API] Creating dummy mock files in "${dir}"...`, "system");
 
   try {

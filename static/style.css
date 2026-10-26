@@ -245,6 +245,22 @@ body {
 }
 .offline-icon { font-size: 22px; flex-shrink: 0; }
 
+.demo-banner {
+  background: var(--blue-dim);
+  border-bottom: 1px solid var(--blue-border);
+}
+.demo-banner strong {
+  color: var(--blue);
+}
+.demo-banner code {
+  background: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--cyan);
+}
+
 /* ════════════════════════════ LAYOUT ══════════════════════════ */
 .layout {
   display: flex;

@@ -58,7 +58,7 @@ class FileOrganizerRequestHandler(SimpleHTTPRequestHandler):
         path = parsed.path
 
         if path in ("/", "/index.html"):
-            index_path = STATIC_DIR / "index.html"
+            index_path = STATIC_DIR / "index.html" if (STATIC_DIR / "index.html").exists() else BASE_DIR / "index.html"
             if index_path.exists():
                 self._set_headers(200, "text/html; charset=utf-8")
                 with open(index_path, "rb") as f:
@@ -68,7 +68,7 @@ class FileOrganizerRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif path == "/style.css":
-            css_path = STATIC_DIR / "style.css"
+            css_path = STATIC_DIR / "style.css" if (STATIC_DIR / "style.css").exists() else BASE_DIR / "style.css"
             if css_path.exists():
                 self._set_headers(200, "text/css; charset=utf-8")
                 with open(css_path, "rb") as f:
@@ -78,7 +78,7 @@ class FileOrganizerRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif path == "/app.js":
-            js_path = STATIC_DIR / "app.js"
+            js_path = STATIC_DIR / "app.js" if (STATIC_DIR / "app.js").exists() else BASE_DIR / "app.js"
             if js_path.exists():
                 self._set_headers(200, "application/javascript; charset=utf-8")
                 with open(js_path, "rb") as f:

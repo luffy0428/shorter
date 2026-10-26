@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FileSorter — Smart File Organizer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ TOP NAV ═══ -->
+  <header class="topnav">
+    <div class="topnav-brand">
+      <div class="brand-icon">🗂️</div>
+      <div>
+        <h1 class="brand-title">FileSorter</h1>
+        <p class="brand-sub">Python-Powered File Organization</p>
+      </div>
+    </div>
+    <div class="topnav-right">
+      <span class="status-pill" id="status-pill">
+        <span class="status-dot"></span>
+        <span id="status-text">Connecting…</span>
+      </span>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle Light/Dark Mode">
+        <span id="theme-icon">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Offline Alert Banner -->
+  <div id="server-offline-banner" class="offline-banner" style="display:none;">
+    <div class="offline-banner-content">
+      <span class="offline-icon">⚠️</span>
+      <div>
+        <strong>Python Server Not Detected!</strong>
+        <p>You opened this file directly. To use the Python file sorting engine, start the server by running <code>python app.py</code> (or double-clicking <code>run.bat</code>) and visit <a href="http://localhost:8000" target="_blank">http://localhost:8000</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════ MAIN LAYOUT ═══ -->
+  <div class="layout">
+
+    <!-- ══════════ LEFT CONTENT COLUMN ══════════ -->
+    <main class="content-col">
+
+      <!-- ── STEP 1: Folder Selection ── -->
+      <section class="step-card" id="step-select">
+        <div class="step-label">
+          <span class="step-badge">Step 1</span>
+          <span class="step-title">Choose a Folder</span>
+        </div>
+
+        <div class="folder-input-box" id="folder-input-box">
+          <span class="folder-input-icon">📁</span>
+          <input
+            type="text"
+            id="directory-input"
+            class="folder-input"
+            placeholder="Paste a folder path  (e.g. C:\Users\HP\Downloads)"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <button class="btn btn-ghost btn-sm" id="btn-browse-demo">✨ Demo</button>
+        </div>
+
+        <div class="chip-row">
+          <span class="chip-label">Quick paths:</span>
+          <button class="chip" id="chip-demo">🧪 Demo Folder</button>
+          <button class="chip" id="chip-workspace">📂 Workspace</button>
+          <button class="chip" id="chip-desktop">🖥️ Desktop</button>
+          <button class="chip" id="chip-downloads">📥 Downloads</button>
+        </div>
+      </section>
+
+      <!-- ── STEP 2: Scan Results ── -->
+      <section class="step-card" id="step-scan">
+        <div class="step-label">
+          <span class="step-badge step-badge--2">Step 2</span>
+          <span class="step-title">Scan Results</span>
+          <span class="step-hint" id="table-hint">Run a scan to see files</span>
+        </div>
+
+        <!-- KPI Strip -->
+        <div class="kpi-strip">
+          <div class="kpi-tile">
+            <div class="kpi-icon">📄</div>
+            <div class="kpi-body">
+              <div class="kpi-num" id="kpi-total-files">—</div>
+              <div class="kpi-label">Files Found</div>
+            </div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-icon">💾</div>
+            <div class="kpi-body">
+              <div class="kpi-num" id="kpi-total-size">—</div>
+              <div class="kpi-label">Total Size</div>
+            </div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-icon">🏷️</div>
+            <div class="kpi-body">
+              <div class="kpi-num" id="kpi-categories-count">—</div>
+              <div class="kpi-label">Categories</div>
+            </div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-icon">⚙️</div>
+            <div class="kpi-body">
+              <div class="kpi-num kpi-status" id="kpi-engine-status">Idle</div>
+              <div class="kpi-label">Engine</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribution Bar -->
+        <div class="dist-section" id="distribution-section" style="display:none;">
+          <div class="dist-header">
+            <span class="dist-title">Category Breakdown</span>
+            <span class="dist-badge" id="category-summary-pill">0 files</span>
+          </div>
+          <div class="dist-bar" id="category-progress-bar"></div>
+          <div class="dist-legend" id="category-pills"></div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="filter-search" class="search-input" placeholder="Search files…" />
+          </div>
+          <select id="filter-category" class="cat-select">
+            <option value="ALL">All Categories</option>
+          </select>
+        </div>
+
+        <!-- File Table -->
+        <div class="table-wrap">
+          <table class="file-table" id="file-table">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Size</th>
+                <th>Destination</th>
+                <th>Modified</th>
+              </tr>
+            </thead>
+            <tbody id="file-table-body">
+              <tr class="empty-row">
+                <td colspan="6">
+                  <div class="empty-state">
+                    <div class="empty-art">🗂️</div>
+                    <h3 class="empty-heading">No directory scanned yet</h3>
+                    <p class="empty-body">Enter a folder path above and click <strong>Scan &amp; Preview</strong> — or try the <strong>Demo Folder</strong> to see it in action.</p>
+                    <button class="btn btn-primary" id="btn-empty-demo">✨ Try Demo Folder</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Category Rules Accordion ── -->
+      <details class="rules-card" id="rules-card">
+        <summary class="rules-summary">
+          <span>⚙️ Supported File Categories &amp; Extensions</span>
+          <span class="rules-arrow">›</span>
+        </summary>
+        <div class="rules-grid" id="rules-content"></div>
+      </details>
+
+      <!-- ── Activity Log ── -->
+      <section class="log-card">
+        <div class="log-header">
+          <span class="log-title">🖥️ Activity Log</span>
+          <button class="btn-link" id="btn-clear-logs">Clear</button>
+        </div>
+        <div class="log-console" id="log-console">
+          <div class="log-entry log-system">
+            <span class="log-time">[System]</span>
+            <span>FileSorter initialized. Backend: Pure Python standard library.</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ══════════ RIGHT SIDEBAR ══════════ -->
+    <aside class="sidebar">
+      <div class="sidebar-inner">
+
+        <div class="sidebar-section">
+          <p class="sidebar-section-label">Analyze</p>
+          <button class="action-btn action-btn--primary" id="btn-scan">
+            <span class="action-btn-icon">🔍</span>
+            <span class="action-btn-text">
+              <strong>Scan &amp; Preview</strong>
+              <small>Classify files by type</small>
+            </span>
+          </button>
+          <button class="action-btn action-btn--ghost" id="btn-dryrun">
+            <span class="action-btn-icon">👁️</span>
+            <span class="action-btn-text">
+              <strong>Dry Run</strong>
+              <small>Simulate moves (safe)</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section">
+          <p class="sidebar-section-label">Act</p>
+          <button class="action-btn action-btn--success" id="btn-organize">
+            <span class="action-btn-icon">⚡</span>
+            <span class="action-btn-text">
+              <strong>Organize Now</strong>
+              <small>Move files into folders</small>
+            </span>
+          </button>
+          <button class="action-btn action-btn--warning" id="btn-undo" disabled>
+            <span class="action-btn-icon">↩️</span>
+            <span class="action-btn-text">
+              <strong>Undo Last Sort</strong>
+              <small>Restore original state</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section">
+          <p class="sidebar-section-label">Test</p>
+          <button class="action-btn action-btn--outline" id="btn-create-samples">
+            <span class="action-btn-icon">➕</span>
+            <span class="action-btn-text">
+              <strong>Generate Samples</strong>
+              <small>Create mock test files</small>
+            </span>
+          </button>
+        </div>
+
+        <!-- Progress indicator (hidden by default) -->
+        <div class="sidebar-progress" id="sidebar-progress" style="display:none;">
+          <div class="progress-label" id="progress-label">Working…</div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Step guide -->
+        <div class="step-guide">
+          <div class="guide-item guide-done" id="guide-step1">
+            <div class="guide-dot"></div>
+            <span>Select folder</span>
+          </div>
+          <div class="guide-connector"></div>
+          <div class="guide-item" id="guide-step2">
+            <div class="guide-dot"></div>
+            <span>Scan files</span>
+          </div>
+          <div class="guide-connector"></div>
+          <div class="guide-item" id="guide-step3">
+            <div class="guide-dot"></div>
+            <span>Organize</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div><!-- /.layout -->
+
+  <!-- ═══════════════════════════ CONFIRM MODAL ═══ -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-icon">⚡</div>
+      <h2 class="modal-title">Organize Files?</h2>
+      <p class="modal-body" id="modal-body">
+        This will move all loose files into category subfolders.<br />
+        An undo history will be saved so you can reverse this.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn btn-success" id="modal-confirm">Yes, Organize</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ TOAST ═══ -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
